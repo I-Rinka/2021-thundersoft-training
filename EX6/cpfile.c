@@ -22,11 +22,11 @@ int main(int argc, char *argv[])
         printf("file %s cannot create.\n", argv[2]);
         return -1;
     }
-    
+
     char c;
-    while ((c=fgetc(source))!=EOF)
+    while ((c = fgetc(source)) != EOF)
     {
-        fputc(c,target);
+        fputc(c, target);
     }
     fclose(source);
     fclose(target);
