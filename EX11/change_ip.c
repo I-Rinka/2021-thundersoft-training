@@ -18,21 +18,25 @@ int main()
 	char str[20], command[100];
 	child = fork();
 	if (child > 0)
+	{
 		exit(0);
+	}
 	else if (child < 0)
 	{
-		perror("创建子进程失败");
+		perror("create process failed!");
 		exit(1);
 	}
 	setsid();
 	chdir("/tmp");
 	umask(0);
 	for (i = 0; i < NOFILE; ++i)
+	{
 		close(i);
+	}
 	fp = fopen("ip.txt", "r");
 	if (fp <= 0)
 	{
-		perror("打开文件失败");
+		perror("open file error!");
 		exit(1);
 	}
 	lines = 0;

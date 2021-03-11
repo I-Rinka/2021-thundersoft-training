@@ -60,12 +60,9 @@ int main()
 		printf("input string:");
 		scanf("%s", w_buf);
 		write(fd[1], w_buf, strlen(w_buf));
-
 		sleep(1);
 		if (r_num = read(fd1[0], w_buf, 100) > 0)
-			;
 		{
-
 			printf("from to pipe is %s\n", w_buf);
 		}
 

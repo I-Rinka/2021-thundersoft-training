@@ -3,17 +3,20 @@
 #include <sys/types.h>
 int main()
 {
+  int p1 = fork();
 
-  int pid1 = fork();
-
-  if (0 == pid1)
+  if (0 == p1)
   {
-    int pid2 = fork();
+    int p2 = fork();
 
-    if (0 == pid2)
+    if (0 == p2)
+    {
       printf("c\n");
+    }
     else
+    {
       printf("b\n");
+    }
   }
   else
   {

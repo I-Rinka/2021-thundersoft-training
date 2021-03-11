@@ -6,6 +6,7 @@ void thread()
     int i;
     for (i = 0; i < 3; i++)
     {
+        sleep(1);
         printf("This is a pthread.\n");
     }
 }

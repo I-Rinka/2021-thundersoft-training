@@ -28,7 +28,7 @@ int main()
     msgid = msgget(IPC_KEY, IPC_CREAT | 0664);
     if (msgid < 0)
     {
-        perror("msgget error");
+        perror("massage get error");
         return -1;
     }
     while (1)
