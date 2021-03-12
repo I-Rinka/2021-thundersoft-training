@@ -6,36 +6,38 @@
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
-#include<queue>
+#include <queue>
 #define MM_NAME "SHARE_MEM"
 
-template <typename T>
 class Share_Buffer
 {
+private:
+	sem_t *sem;
+	char *bufID;
+	const int queue_size = 100;
+	int element_size = this->queue_size - 2;
+	int *addr = NULL;
+	int *exitflag = NULL;
+	int *pos = NULL;
+	int *array = NULL;
+
 public:
 	Share_Buffer(int size, char *bufID)
 	{
 		this->bufID = (char *)malloc(2048 * sizeof(char));
-		if (sizeof(bufID) < 2048 * sizeof(char))
-			memcpy(this->bufID, bufID, strlen(bufID));
+
+		memcpy(this->bufID, bufID, strlen(bufID));
 
 		this->sem = sem_open(this->bufID, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR, 1); //初始化信号量
 		if (this->sem != NULL)													   //以O_EXCL创建成功，表明这是第一次，需要初始化
 		{
 			int fd = shm_open(this->bufID, O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR); //创建内存文件，注意ECXL排他标示
-			// if (ftruncate(fd, sizeof(myque<T>)) == -1)
-			if (ftruncate(fd, sizeof(std::queue<T>)) == -1)
-				exit(-1); //重新分配大小
-			// this->addr = mmap(NULL, sizeof(myque<T>), PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
-			this->addr = mmap(NULL, sizeof(std::queue<T>), PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
-			// void *tmp_ds = (char *)this->addr + sizeof(myque<T>); //数据段开始地址
-			void *tmp_ds = (char *)this->addr + sizeof(std::queue<T>); //数据段开始地址
-			void *tmp_dt = new (tmp_ds) T[size];
-			// this->que = new (this->addr) myque<T>(size);
-			this->que = new (this->addr) std::queue<T>(size);
+
+			this->addr = (int *)mmap(NULL, this->queue_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+
 			close(fd);
 		}
-		else //不是第一个程序
+		else //不是第一个进程
 		{
 			this->sem = sem_open(this->bufID, O_EXCL, S_IRUSR | S_IWUSR, 1); //重新打开
 			struct stat shm_status;
@@ -45,16 +47,17 @@ public:
 				printf("unable to access memory");
 				exit(-1);
 			}
-			this->addr = mmap(NULL, shm_status.st_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+			this->addr = (int *)mmap(NULL, shm_status.st_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
 			if (this->addr == NULL)
 			{
 				printf("unable to remap memory");
 				exit(-1);
 			}
-			// this->que = (myque<T> *)this->addr;
-			this->que = (std::queue<T> *)this->addr;
 			close(fd);
 		}
+		this->pos = this->addr;
+		this->exitflag = addr + 1;
+		this->array = this->addr + 2;
 	}
 
 	~Share_Buffer()
@@ -64,67 +67,45 @@ public:
 		sem_close(this->sem);
 		free(this->bufID);
 	}
-	int push(T c)
+	int push(int c)
 	{
 		sem_wait(this->sem);
-		// int tmp = que->push(c);
-		this->buffer->push(c);
+		*this->pos = (*this->pos + 1) % this->element_size;
+		this->array[*this->pos] = c;
 		sem_post(this->sem);
-		return tmp;
+		return 1;
 	}
 	int pop()
 	{
 		sem_wait(this->sem);
-		// int tmp = que->pop(&d);
-		this->buffer->pop();
-		// *c = d;
+		*this->pos = (*this->pos - 1);
+		if (*this->pos < 0)
+		{
+			*this->pos = this->element_size - 1;
+		}
+
 		sem_post(this->sem);
 		return 1;
 	}
-	int top(T *c)
+	int top()
 	{
 		sem_wait(this->sem);
-		int tmp = que->top(c);
-		sem_post(this->sem);
-		return tmp;
-	}
-	bool isFull()
-	{
-		sem_wait(this->sem);
-		bool tmp = que->isFull;
-		sem_post(this->sem);
-		return tmp;
-	}
-	bool isEmpty()
-	{
-		sem_wait(this->sem);
-		bool tmp = que->isEmpty();
+		int tmp = this->array[*this->pos];
 		sem_post(this->sem);
 		return tmp;
 	}
 	bool ifExit()
 	{
-		return que->exitflag;
+		return *this->exitflag;
 	}
-	void _exit()
+	void Exit()
 	{
-		que->exitflag = 1;
+		*this->exitflag = 1;
 	}
-
-private:
-	std::queue<T> *buffer;
-	myque<T> *que;
-	sem_t *sem;
-	char *bufID;
-	void *addr;
 };
 
-typedef struct point
-{
-	int x, y;
-} P;
-P p0;
 sem_t *bufEmpty, *msgReceived, *toC_msgRecv, *toD_msgRecv;
+
 
 class LogFile
 {
@@ -179,7 +160,7 @@ int main(int argc, const char *argv[])
 
 	if (argc != 2)
 		return -1;
-	Share_Buffer<struct point> que = Share_Buffer<struct point>(2, (char *)MM_NAME);
+	Share_Buffer que = Share_Buffer(2, (char *)MM_NAME);
 	LogFile s = LogFile("./try.log");
 	int i;
 	for (i = 0; i < 3; i++)
@@ -189,10 +170,41 @@ int main(int argc, const char *argv[])
 	}
 	switch (i)
 	{
+	default:
+	{ //进程A
+		char tmp_log[200] = {0};
+		msgReceived = sem_open("msgReceived", O_CREAT, S_IRUSR | S_IWUSR, 0);
+		toC_msgRecv = sem_open("toC_msgRecv", O_CREAT, S_IRUSR | S_IWUSR, 0);
+		toD_msgRecv = sem_open("toD_msgRecv", O_CREAT, S_IRUSR | S_IWUSR, 0);
+		s.writeLog("A:Sem opened.\n");
+		FILE *f = fopen(argv[1], "r+");
+		int temp;
+		while (fscanf(f, "%d", &temp) != EOF)
+		{
+			// sem_wait(bufEmpty);
+			printf("I am A");
+			que.push(temp);
+			sprintf(tmp_log, "A：Write %d", temp);
+			s.writeLog(tmp_log);
+			sem_post(msgReceived);
+		}
+
+		s.writeLog("A:process will terminate in 5 seconds.\n");
+
+		que.Exit();
+
+		sem_post(msgReceived);
+		s.writeLog("A:Exit!\n");
+		sem_unlink("bufEmpty");
+		sem_unlink("msgReceived");
+		sem_unlink("toC_msgRecv");
+		sem_unlink("toD_msgRecv");
+		exit(0);
+	}
+	break;
 	case 0: //进程B
 	{
 		char tmp_log[200] = {0};
-		bufEmpty = sem_open("bufEmpty", O_CREAT, S_IRUSR | S_IWUSR, 0);
 		toC_msgRecv = sem_open("toC_msgRecv", O_CREAT, S_IRUSR | S_IWUSR, 0);
 		toD_msgRecv = sem_open("toD_msgRecv", O_CREAT, S_IRUSR | S_IWUSR, 0);
 		msgReceived = sem_open("msgReceived", O_CREAT, S_IRUSR | S_IWUSR, 0);
@@ -208,10 +220,10 @@ int main(int argc, const char *argv[])
 				sem_post(toC_msgRecv);
 				exit(0);
 			}
-			que.top(&p0);
+			int temp = que.top();
 			sem_post(toD_msgRecv);
 			sem_post(toC_msgRecv);
-			sprintf(tmp_log, "B：Recv Point,\nx=%d,y=%d\n", p0.x, p0.y);
+			sprintf(tmp_log, "B：Recv %d\n", temp);
 			s.writeLog(tmp_log);
 		}
 	}
@@ -219,7 +231,6 @@ int main(int argc, const char *argv[])
 	case 1: //进程C
 	{
 		char tmp_log[200] = {0};
-		bufEmpty = sem_open("bufEmpty", O_CREAT, S_IRUSR | S_IWUSR, 0);
 		toC_msgRecv = sem_open("toC_msgRecv", O_CREAT, S_IRUSR | S_IWUSR, 0);
 
 		s.writeLog("C:Sem opened.\n");
@@ -229,13 +240,13 @@ int main(int argc, const char *argv[])
 			if (que.ifExit())
 			{
 				s.writeLog("C:exit!\n");
-				sem_post(bufEmpty);
+				// sem_post(bufEmpty);
 				exit(0);
 			}
-			que.top(&p0);
-			sprintf(tmp_log, "C：Recv Point,\nx=%d,y=%d\n", p0.x, p0.y);
+			int temp = que.top();
+			sprintf(tmp_log, "C：Recv Point %d\n", temp);
 			s.writeLog(tmp_log);
-			sem_post(bufEmpty);
+			// sem_post(bufEmpty);
 		}
 	}
 	break;
@@ -257,35 +268,5 @@ int main(int argc, const char *argv[])
 	}
 	break;
 
-	default:
-	{ //进程A
-		char tmp_log[200] = {0};
-		bufEmpty = sem_open("bufEmpty", O_CREAT, S_IRUSR | S_IWUSR, 0);
-		sem_post(bufEmpty);
-		msgReceived = sem_open("msgReceived", O_CREAT, S_IRUSR | S_IWUSR, 0);
-		toC_msgRecv = sem_open("toC_msgRecv", O_CREAT, S_IRUSR | S_IWUSR, 0);
-		toD_msgRecv = sem_open("toD_msgRecv", O_CREAT, S_IRUSR | S_IWUSR, 0);
-		s.writeLog("A:Sem opened.\n");
-		FILE *f = fopen(argv[1], "r+");
-
-		while (fscanf(f, "%d %d ", &p0.x, &p0.y) != EOF)
-		{
-			sem_wait(bufEmpty);
-			que.push(p0);
-			sprintf(tmp_log, "A：Write Point,\nx=%d,y=%d\n", p0.x, p0.y);
-			s.writeLog(tmp_log);
-			sem_post(msgReceived);
-		}
-		s.writeLog("A:process will terminate in 5 seconds.\n");
-		que._exit();
-		sem_post(msgReceived);
-		s.writeLog("A:Exit!\n");
-		sem_unlink("bufEmpty");
-		sem_unlink("msgReceived");
-		sem_unlink("toC_msgRecv");
-		sem_unlink("toD_msgRecv");
-		exit(0);
-	}
-	break;
 	}
 }
