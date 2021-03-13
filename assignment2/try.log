@@ -32,3 +32,71 @@ Fri Mar 12 22:14:06 2021
 D processing...
 Fri Mar 12 22:14:06 2021
 C Recv 4
+Sat Mar 13 11:13:52 2021
+B start.
+Sat Mar 13 11:13:52 2021
+C start.
+Sat Mar 13 11:13:52 2021
+A start.
+Sat Mar 13 11:13:52 2021
+A Write 1
+Sat Mar 13 11:13:52 2021
+D start.
+Sat Mar 13 11:13:52 2021
+D processing...
+Sat Mar 13 11:13:52 2021
+C Recv 2
+Sat Mar 13 11:13:52 2021
+B Recive 2
+Sat Mar 13 11:13:53 2021
+A Write 3
+Sat Mar 13 11:13:53 2021
+D processing...
+Sat Mar 13 11:13:53 2021
+B Recive 4
+Sat Mar 13 11:13:53 2021
+C Recv 4
+Sat Mar 13 11:13:54 2021
+A Write 5
+Sat Mar 13 11:13:54 2021
+A:Exit
+Sat Mar 13 11:13:54 2021
+B Recive 6
+Sat Mar 13 11:13:54 2021
+D processing...
+Sat Mar 13 11:13:54 2021
+C Recv 6
+Sat Mar 13 11:14:11 2021
+B start.
+Sat Mar 13 11:14:11 2021
+C start.
+Sat Mar 13 11:14:11 2021
+A start.
+Sat Mar 13 11:14:11 2021
+A Write 1
+Sat Mar 13 11:14:11 2021
+D start.
+Sat Mar 13 11:14:11 2021
+D processing...
+Sat Mar 13 11:14:11 2021
+C Recv 2
+Sat Mar 13 11:14:11 2021
+B Recive 2
+Sat Mar 13 11:14:12 2021
+A Write 3
+Sat Mar 13 11:14:12 2021
+D processing...
+Sat Mar 13 11:14:12 2021
+B Recive 4
+Sat Mar 13 11:14:12 2021
+C Recv 4
+Sat Mar 13 11:14:13 2021
+A Write 5
+Sat Mar 13 11:14:13 2021
+A:Exit
+Sat Mar 13 11:14:13 2021
+D processing...
+Sat Mar 13 11:14:13 2021
+B Recive 6
+Sat Mar 13 11:14:13 2021
+C Recv 6
